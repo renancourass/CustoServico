@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title th:text="${modo == 'novo' ? 'Novo Usuário' : 'Editar Usuário'}"></title>
+    <link rel="stylesheet" th:href="@{/css/style.css}"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+</head>
+<body>
+<div class="layout">
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <i class="fas fa-calculator"></i>
+            <span>CustoServico</span>
+        </div>
+        <nav class="sidebar-nav">
+            <a th:href="@{/dashboard}" class="nav-item"><i class="fas fa-home"></i> Dashboard</a>
+            <a th:href="@{/admin/usuarios}" class="nav-item active">
+                <i class="fas fa-users-cog"></i> Usuários
+            </a>
+            <a th:href="@{/logout}" class="nav-item nav-item-logout"
+               onclick="return confirm('Deseja sair?')">
+                <i class="fas fa-sign-out-alt"></i> Sair
+            </a>
+        </nav>
+    </aside>
+    <main class="main-content">
+        <div class="page-header">
+            <h2>
+                <i class="fas fa-user-edit"></i>
+                <span th:text="${modo == 'novo' ? 'Novo Usuário' : 'Editar Usuário'}"></span>
+            </h2>
+            <a th:href="@{/admin/usuarios}" class="btn btn-secondary btn-sm">
+                <i class="fas fa-arrow-left"></i> Voltar
+            </a>
+        </div>
+
+        <div class="card" style="max-width:600px">
+            <div class="card-body">
+                <form th:action="${modo == 'novo' ? '/admin/usuarios/salvar' : '/admin/usuarios/atualizar/' + usuario.id}"
+                      th:object="${usuario}" method="post">
+                    <input type="hidden" name="_csrf" th:value="${_csrf.token}"/>
+
+                    <div class="form-group">
+                        <label>Nome Completo *</label>
+                        <input type="text" th:field="*{nome}" class="form-control" required
+                               placeholder="Nome do usuário"/>
+                    </div>
+                    <div class="form-group">
+                        <label>Username *</label>
+                        <input type="text" th:field="*{username}" class="form-control"
+                               th:readonly="${modo == 'editar'}" required
+                               placeholder="login do usuário"/>
+                    </div>
+                    <div class="form-group">
+                        <label>Email *</label>
+                        <input type="email" th:field="*{email}" class="form-control" required
+                               placeholder="email@empresa.com"/>
+                    </div>
+                    <div class="form-group">
+                        <label th:text="${modo == 'novo'} ? 'Senha *' : 'Nova Senha (deixe em branco para manter)'"></label>
+                        <input type="password" th:field="*{password}" class="form-control"
+                               th:required="${modo == 'novo'}" placeholder="Mínimo 6 caracteres"/>
+                    </div>
+                    <div class="form-group">
+                        <label>Perfil *</label>
+                        <select th:field="*{role}" class="form-control" required>
+                            <option th:each="r : ${roles}" th:value="${r}" th:text="${r}"></option>
+                        </select>
+                    </div>
+                    <div class="form-group" th:if="${modo == 'editar'}">
+                        <label>Status</label>
+                        <select th:field="*{ativo}" class="form-control">
+                            <option value="true">Ativo</option>
+                            <option value="false">Inativo</option>
+                        </select>
+                    </div>
+                    <div class="form-actions">
+                        <a th:href="@{/admin/usuarios}" class="btn btn-secondary">Cancelar</a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i>
+                            <span th:text="${modo == 'novo'} ? 'Criar Usuário' : 'Salvar Alterações'"></span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </main>
+</div>
+</body>
+</html>

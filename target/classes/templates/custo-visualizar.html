@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Visualizar Custo – Custo de Serviço</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+</head>
+<body>
+
+<div class="layout">
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <i class="fas fa-calculator"></i>
+            <span>CustoServico</span>
+        </div>
+        <nav class="sidebar-nav">
+            <a th:href="@{/dashboard}" class="nav-item">
+                <i class="fas fa-home"></i> Dashboard
+            </a>
+            <a th:href="@{/custos/novo}" class="nav-item">
+                <i class="fas fa-plus-circle"></i> Novo Custo
+            </a>
+            <a th:href="@{/admin/usuarios}" sec:authorize="hasRole('SUPER_ADMIN')" class="nav-item">
+                <i class="fas fa-users-cog"></i> Usuários
+            </a>
+            <a th:href="@{/logout}" class="nav-item nav-item-logout"
+               onclick="return confirm('Deseja sair?')">
+                <i class="fas fa-sign-out-alt"></i> Sair
+            </a>
+        </nav>
+    </aside>
+
+    <main class="main-content">
+        <div class="page-header">
+            <h2><i class="fas fa-eye"></i> Custo Mensal da Unidade de Serviço</h2>
+            <div class="header-actions">
+                <a th:href="@{/custos/editar/{id}(id=${custo.id})}" class="btn btn-warning btn-sm">
+                    <i class="fas fa-edit"></i> Editar
+                </a>
+                <a th:href="@{/dashboard}" class="btn btn-secondary btn-sm">
+                    <i class="fas fa-arrow-left"></i> Voltar
+                </a>
+            </div>
+        </div>
+
+        <!-- Planilha de custo estilo original -->
+        <div class="card">
+            <div class="card-header">
+                <h3 th:text="${custo.descricao}"></h3>
+                <small>
+                    Criado em:
+                    <span th:text="${#temporals.format(custo.criadoEm, 'dd/MM/yyyy HH:mm')}"></span>
+                    por <strong th:text="${custo.usuario?.nome}"></strong>
+                </small>
+            </div>
+            <div class="card-body">
+                <table class="planilha-table">
+                    <thead>
+                    <tr>
+                        <th colspan="2">CUSTO MENSAL DA UNIDADE DE SERVIÇO</th>
+                        <th class="th-valor" th:text="${custo.descricao}"></th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <!-- I - REMUNERAÇÃO -->
+                    <tr class="section-title">
+                        <td colspan="3">COMPOSIÇÃO DE PREÇO</td>
+                    </tr>
+                    <tr class="section-title">
+                        <td colspan="3">I – REMUNERAÇÃO</td>
+                    </tr>
+                    <tr>
+                        <td>I.1 – Remuneração Mensal</td>
+                        <td></td>
+                        <td class="td-valor"
+                            th:text="'R$ ' + ${#numbers.formatDecimal(custo.remuneracaoMensal ?: 0, 1, 'POINT', 2, 'COMMA')}"></td>
+                    </tr>
+                    <tr>
+                        <td>I.7 – Gratificação</td>
+                        <td></td>
+                        <td class="td-valor"
+                            th:text="'R$ ' + ${#numbers.formatDecimal(custo.gratificacao ?: 0, 1, 'POINT', 2, 'COMMA')}"></td>
+                    </tr>
+                    <tr class="subtotal-row">
+                        <td colspan="2"><strong>SUBTOTAL I</strong></td>
+                        <td class="td-valor subtotal-val"
+                            th:text="'R$ ' + ${#numbers.formatDecimal(custo.subtotalI, 1, 'POINT', 2, 'COMMA')}"></td>
+                    </tr>
+
+                    <!-- II - ENCARGOS SOCIAIS -->
+                    <tr class="section-title">
+                        <td colspan="3">II – ENCARGOS SOCIAIS</td>
+                    </tr>
+                    <tr>
+                        <td>II.1 – Encargos Sociais incidentes sobre a Remuneração</td>
+                        <td class="td-pct"
+                            th:text="${#numbers.formatDecimal(custo.percentualEncargosSociais ?: 0, 1, 'POINT', 2, 'COMMA')} + '%'"></td>
+                        <td class="td-valor"
+                            th:text="'R$ ' + ${#numbers.formatDecimal(custo.subtotalII, 1, 'POINT', 2, 'COMMA')}"></td>
+                    </tr>
+                    <tr class="subtotal-row">
+                        <td colspan="2"><strong>SUBTOTAL II</strong></td>
+                        <td class="td-valor subtotal-val"
+                            th:text="'R$ ' + ${#numbers.formatDecimal(custo.subtotalII, 1, 'POINT', 2, 'COMMA')}"></td>
+                    </tr>
+
+                    <!-- III - INSUMOS -->
+                    <tr class="section-title">
+                        <td colspan="3">III – INSUMOS</td>
+                    </tr>
+                    <tr>
+                        <td>III.1 – Fardamento</td>
+                        <td></td>
+                        <td class="td-valor"
+                            th:text="'R$ ' + ${#numbers.formatDecimal(custo.fardamento ?: 0, 1, 'POINT', 2, 'COMMA')}"></td>
+                    </tr>
+                    <tr>
+                        <td>III.2 – Vale Transporte (deduzido 6,00% s/ remuneração)</td>
+                        <td class="td-pct"
+                            th:text="${custo.valeTransporteDias} + ' × R$ ' + ${#numbers.formatDecimal(custo.valeTransporteValor ?: 0, 1, 'POINT', 2, 'COMMA')}"></td>
+                        <td class="td-valor"
+                            th:text="'R$ ' + ${#numbers.formatDecimal(custo.valeTransporteCalculado, 1, 'POINT', 2, 'COMMA')}"></td>
+                    </tr>
+                    <tr>
+                        <td>III.3 – Auxílio Alimentação</td>
+                        <td class="td-pct"
+                            th:text="${custo.auxilioAlimentacaoDias} + ' × R$ ' + ${#numbers.formatDecimal(custo.auxilioAlimentacaoValor ?: 0, 1, 'POINT', 2, 'COMMA')}"></td>
+                        <td class="td-valor"
+                            th:text="'R$ ' + ${#numbers.formatDecimal(custo.auxilioAlimentacaoCalculado, 1, 'POINT', 2, 'COMMA')}"></td>
+                    </tr>
+                    <tr>
+                        <td>III.4 – Plano de Saúde</td>
+                        <td></td>
+                        <td class="td-valor"
+                            th:text="'R$ ' + ${#numbers.formatDecimal(custo.planoSaude ?: 0, 1, 'POINT', 2, 'COMMA')}"></td>
+                    </tr>
+                    <tr>
+                        <td>III.5 – Seguro de Vida</td>
+                        <td></td>
+                        <td class="td-valor"
+                            th:text="'R$ ' + ${#numbers.formatDecimal(custo.seguroVida ?: 0, 1, 'POINT', 2, 'COMMA')}"></td>
+                    </tr>
+                    <tr class="subtotal-row">
+                        <td colspan="2"><strong>SUBTOTAL III</strong></td>
+                        <td class="td-valor subtotal-val"
+                            th:text="'R$ ' + ${#numbers.formatDecimal(custo.subtotalIII, 1, 'POINT', 2, 'COMMA')}"></td>
+                    </tr>
+
+                    <!-- IV - BONIFICAÇÃO -->
+                    <tr class="section-title">
+                        <td colspan="3">IV – BONIFICAÇÃO E OUTRAS DESPESAS</td>
+                    </tr>
+                    <tr>
+                        <td>IV.1 – Despesas Administrativa, Operacionais e Indiretas</td>
+                        <td class="td-pct"
+                            th:text="${#numbers.formatDecimal(custo.percentualDespesasAdm ?: 0, 1, 'POINT', 2, 'COMMA')} + '%'"></td>
+                        <td class="td-valor"
+                            th:text="'R$ ' + ${#numbers.formatDecimal(custo.despesasAdmCalculado, 1, 'POINT', 2, 'COMMA')}"></td>
+                    </tr>
+                    <tr>
+                        <td>IV.2 – Lucro</td>
+                        <td class="td-pct"
+                            th:text="${#numbers.formatDecimal(custo.percentualLucro ?: 0, 1, 'POINT', 2, 'COMMA')} + '%'"></td>
+                        <td class="td-valor"
+                            th:text="'R$ ' + ${#numbers.formatDecimal(custo.lucroCalculado, 1, 'POINT', 2, 'COMMA')}"></td>
+                    </tr>
+                    <tr class="subtotal-row">
+                        <td colspan="2"><strong>SUBTOTAL IV</strong></td>
+                        <td class="td-valor subtotal-val"
+                            th:text="'R$ ' + ${#numbers.formatDecimal(custo.subtotalIV, 1, 'POINT', 2, 'COMMA')}"></td>
+                    </tr>
+
+                    <!-- V - TRIBUTOS -->
+                    <tr class="section-title">
+                        <td colspan="3">V – TRIBUTOS SOBRE O FATURAMENTO</td>
+                    </tr>
+                    <tr>
+                        <td>V.1 – IRPJ</td>
+                        <td class="td-pct"
+                            th:text="${#numbers.formatDecimal(custo.percentualIrpj ?: 0, 1, 'POINT', 2, 'COMMA')} + '%'"></td>
+                        <td class="td-valor"
+                            th:text="'R$ ' + ${#numbers.formatDecimal(custo.irpjCalculado, 1, 'POINT', 2, 'COMMA')}"></td>
+                    </tr>
+                    <tr>
+                        <td>V.2 – CSLL</td>
+                        <td class="td-pct"
+                            th:text="${#numbers.formatDecimal(custo.percentualCsll ?: 0, 1, 'POINT', 2, 'COMMA')} + '%'"></td>
+                        <td class="td-valor"
+                            th:text="'R$ ' + ${#numbers.formatDecimal(custo.csllCalculado, 1, 'POINT', 2, 'COMMA')}"></td>
+                    </tr>
+                    <tr>
+                        <td>V.3 – PIS</td>
+                        <td class="td-pct"
+                            th:text="${#numbers.formatDecimal(custo.percentualPis ?: 0, 1, 'POINT', 2, 'COMMA')} + '%'"></td>
+                        <td class="td-valor"
+                            th:text="'R$ ' + ${#numbers.formatDecimal(custo.pisCalculado, 1, 'POINT', 2, 'COMMA')}"></td>
+                    </tr>
+                    <tr>
+                        <td>V.4 – COFINS</td>
+                        <td class="td-pct"
+                            th:text="${#numbers.formatDecimal(custo.percentualCofins ?: 0, 1, 'POINT', 2, 'COMMA')} + '%'"></td>
+                        <td class="td-valor"
+                            th:text="'R$ ' + ${#numbers.formatDecimal(custo.cofinsCalculado, 1, 'POINT', 2, 'COMMA')}"></td>
+                    </tr>
+                    <tr>
+                        <td>V.5 – ISS</td>
+                        <td class="td-pct"
+                            th:text="${#numbers.formatDecimal(custo.percentualIss ?: 0, 1, 'POINT', 2, 'COMMA')} + '%'"></td>
+                        <td class="td-valor"
+                            th:text="'R$ ' + ${#numbers.formatDecimal(custo.issCalculado, 1, 'POINT', 2, 'COMMA')}"></td>
+                    </tr>
+                    <tr class="subtotal-row">
+                        <td><strong>SUBTOTAL V</strong></td>
+                        <td class="td-pct"
+                            th:text="${#numbers.formatDecimal(custo.percentualTotalTributos, 1, 'POINT', 2, 'COMMA')} + '%'"></td>
+                        <td class="td-valor subtotal-val"
+                            th:text="'R$ ' + ${#numbers.formatDecimal(custo.subtotalV, 1, 'POINT', 2, 'COMMA')}"></td>
+                    </tr>
+
+                    <!-- PREÇO MENSAL FINAL -->
+                    <tr class="preco-final-row">
+                        <td colspan="2"><strong>VI – PREÇO MENSAL POR UNIDADE DE SERVIÇO</strong></td>
+                        <td class="td-valor preco-final-td"
+                            th:text="'R$ ' + ${#numbers.formatDecimal(custo.precoMensal, 1, 'POINT', 2, 'COMMA')}"></td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </main>
+</div>
+
+</body>
+</html>

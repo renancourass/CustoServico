@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title th:text="${modo == 'novo' ? 'Novo Custo' : 'Editar Custo'} + ' – Custo de Serviço'"></title>
+    <link rel="stylesheet" th:href="@{/css/style.css}"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+</head>
+<body>
+
+<div class="layout">
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <i class="fas fa-calculator"></i>
+            <span>CustoServico</span>
+        </div>
+        <nav class="sidebar-nav">
+            <a th:href="@{/dashboard}" class="nav-item">
+                <i class="fas fa-home"></i> Dashboard
+            </a>
+            <a th:href="@{/custos/novo}" class="nav-item active">
+                <i class="fas fa-plus-circle"></i> Novo Custo
+            </a>
+            <a th:href="@{/admin/usuarios}" sec:authorize="hasRole('SUPER_ADMIN')" class="nav-item">
+                <i class="fas fa-users-cog"></i> Usuários
+            </a>
+            <a th:href="@{/logout}" class="nav-item nav-item-logout"
+               onclick="return confirm('Deseja sair?')">
+                <i class="fas fa-sign-out-alt"></i> Sair
+            </a>
+        </nav>
+    </aside>
+
+    <main class="main-content">
+        <div class="page-header">
+            <h2>
+                <i class="fas fa-file-invoice-dollar"></i>
+                <span th:text="${modo == 'novo' ? 'Novo Custo Mensal' : 'Editar Custo Mensal'}"></span>
+            </h2>
+            <a th:href="@{/dashboard}" class="btn btn-secondary btn-sm">
+                <i class="fas fa-arrow-left"></i> Voltar
+            </a>
+        </div>
+
+        <!-- Formulário -->
+        <form th:action="${modo == 'novo' ? '/custos/salvar' : '/custos/atualizar/' + custo.id}"
+              th:object="${custo}" method="post" id="custoForm">
+
+            <input type="hidden" name="_csrf" th:value="${_csrf.token}"/>
+
+            <!-- Identificação -->
+            <div class="card form-section">
+                <div class="card-header section-header-blue">
+                    <h4><i class="fas fa-tag"></i> Identificação</h4>
+                </div>
+                <div class="card-body">
+                    <div class="form-row">
+                        <div class="form-col-full">
+                            <label>Descrição do Serviço *</label>
+                            <input type="text" th:field="*{descricao}" class="form-control"
+                                   placeholder="Ex: ASG - Auxiliar de Serviços Gerais" required/>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- I - REMUNERAÇÃO -->
+            <div class="card form-section">
+                <div class="card-header section-header-green">
+                    <h4><i class="fas fa-money-bill-wave"></i> I – Remuneração</h4>
+                </div>
+                <div class="card-body">
+                    <div class="form-row">
+                        <div class="form-col">
+                            <label>I.1 – Remuneração Mensal (R$)</label>
+                            <input type="number" step="0.01" th:field="*{remuneracaoMensal}"
+                                   class="form-control calc-input" placeholder="0,00"
+                                   id="remuneracaoMensal"/>
+                        </div>
+                        <div class="form-col">
+                            <label>I.7 – Gratificação (R$)</label>
+                            <input type="number" step="0.01" th:field="*{gratificacao}"
+                                   class="form-control calc-input" placeholder="0,00"
+                                   id="gratificacao"/>
+                        </div>
+                        <div class="form-col form-col-result">
+                            <label>Subtotal I (R$)</label>
+                            <input type="text" id="subtotalI" class="form-control result-field" readonly/>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- II - ENCARGOS SOCIAIS -->
+            <div class="card form-section">
+                <div class="card-header section-header-orange">
+                    <h4><i class="fas fa-percent"></i> II – Encargos Sociais</h4>
+                </div>
+                <div class="card-body">
+                    <div class="form-row">
+                        <div class="form-col">
+                            <label>II.1 – % Encargos Sociais sobre Remuneração</label>
+                            <div class="input-group">
+                                <input type="number" step="0.01" th:field="*{percentualEncargosSociais}"
+                                       class="form-control calc-input" placeholder="69,00"
+                                       id="percentualEncargos"/>
+                                <span class="input-addon">%</span>
+                            </div>
+                        </div>
+                        <div class="form-col form-col-result">
+                            <label>Subtotal II (R$)</label>
+                            <input type="text" id="subtotalII" class="form-control result-field" readonly/>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- III - INSUMOS -->
+            <div class="card form-section">
+                <div class="card-header section-header-teal">
+                    <h4><i class="fas fa-box"></i> III – Insumos</h4>
+                </div>
+                <div class="card-body">
+                    <div class="form-row">
+                        <div class="form-col">
+                            <label>III.1 – Fardamento (R$)</label>
+                            <input type="number" step="0.01" th:field="*{fardamento}"
+                                   class="form-control calc-input" placeholder="0,00"/>
+                        </div>
+                        <div class="form-col">
+                            <label>III.4 – Plano de Saúde (R$)</label>
+                            <input type="number" step="0.01" th:field="*{planoSaude}"
+                                   class="form-control calc-input" placeholder="0,00"/>
+                        </div>
+                        <div class="form-col">
+                            <label>III.5 – Seguro de Vida (R$)</label>
+                            <input type="number" step="0.01" th:field="*{seguroVida}"
+                                   class="form-control calc-input" placeholder="0,00"/>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-col">
+                            <label>III.2 – Vale Transporte (dias/mês)</label>
+                            <input type="number" th:field="*{valeTransporteDias}"
+                                   class="form-control calc-input" placeholder="0"
+                                   id="vtDias"/>
+                        </div>
+                        <div class="form-col">
+                            <label>III.2 – Valor por passagem (R$)</label>
+                            <input type="number" step="0.01" th:field="*{valeTransporteValor}"
+                                   class="form-control calc-input" placeholder="0,00"
+                                   id="vtValor"/>
+                        </div>
+                        <div class="form-col form-col-result">
+                            <label>Vale Transporte Calculado (R$) <small>(-6% rem.)</small></label>
+                            <input type="text" id="vtCalc" class="form-control result-field" readonly/>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-col">
+                            <label>III.3 – Alimentação (dias/mês)</label>
+                            <input type="number" th:field="*{auxilioAlimentacaoDias}"
+                                   class="form-control calc-input" placeholder="0"
+                                   id="alimDias"/>
+                        </div>
+                        <div class="form-col">
+                            <label>III.3 – Valor diário (R$)</label>
+                            <input type="number" step="0.01" th:field="*{auxilioAlimentacaoValor}"
+                                   class="form-control calc-input" placeholder="0,00"
+                                   id="alimValor"/>
+                        </div>
+                        <div class="form-col form-col-result">
+                            <label>Alimentação Calculada (R$)</label>
+                            <input type="text" id="alimCalc" class="form-control result-field" readonly/>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-col form-col-result">
+                            <label><strong>Subtotal III (R$)</strong></label>
+                            <input type="text" id="subtotalIII" class="form-control result-field result-big" readonly/>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- IV - BONIFICAÇÃO -->
+            <div class="card form-section">
+                <div class="card-header section-header-purple">
+                    <h4><i class="fas fa-chart-line"></i> IV – Bonificação e Outras Despesas</h4>
+                </div>
+                <div class="card-body">
+                    <div class="form-row">
+                        <div class="form-col">
+                            <label>IV.1 – % Despesas Administrativas e Indiretas</label>
+                            <div class="input-group">
+                                <input type="number" step="0.01" th:field="*{percentualDespesasAdm}"
+                                       class="form-control calc-input" placeholder="0,00"
+                                       id="pctDespAdm"/>
+                                <span class="input-addon">%</span>
+                            </div>
+                        </div>
+                        <div class="form-col">
+                            <label>IV.2 – % Lucro</label>
+                            <div class="input-group">
+                                <input type="number" step="0.01" th:field="*{percentualLucro}"
+                                       class="form-control calc-input" placeholder="0,00"
+                                       id="pctLucro"/>
+                                <span class="input-addon">%</span>
+                            </div>
+                        </div>
+                        <div class="form-col form-col-result">
+                            <label>Subtotal IV (R$)</label>
+                            <input type="text" id="subtotalIV" class="form-control result-field" readonly/>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- V - TRIBUTOS -->
+            <div class="card form-section">
+                <div class="card-header section-header-red">
+                    <h4><i class="fas fa-landmark"></i> V – Tributos sobre o Faturamento</h4>
+                </div>
+                <div class="card-body">
+                    <div class="tributos-grid">
+                        <div class="tributo-item">
+                            <label>V.1 – IRPJ (%)</label>
+                            <div class="input-group">
+                                <input type="number" step="0.01" th:field="*{percentualIrpj}"
+                                       class="form-control calc-input tributo-pct" placeholder="4,80"
+                                       id="pctIrpj"/>
+                                <span class="input-addon">%</span>
+                            </div>
+                            <small>Valor: R$ <span id="vlrIrpj">0,00</span></small>
+                        </div>
+                        <div class="tributo-item">
+                            <label>V.2 – CSLL (%)</label>
+                            <div class="input-group">
+                                <input type="number" step="0.01" th:field="*{percentualCsll}"
+                                       class="form-control calc-input tributo-pct" placeholder="2,88"
+                                       id="pctCsll"/>
+                                <span class="input-addon">%</span>
+                            </div>
+                            <small>Valor: R$ <span id="vlrCsll">0,00</span></small>
+                        </div>
+                        <div class="tributo-item">
+                            <label>V.3 – PIS (%)</label>
+                            <div class="input-group">
+                                <input type="number" step="0.01" th:field="*{percentualPis}"
+                                       class="form-control calc-input tributo-pct" placeholder="0,65"
+                                       id="pctPis"/>
+                                <span class="input-addon">%</span>
+                            </div>
+                            <small>Valor: R$ <span id="vlrPis">0,00</span></small>
+                        </div>
+                        <div class="tributo-item">
+                            <label>V.4 – COFINS (%)</label>
+                            <div class="input-group">
+                                <input type="number" step="0.01" th:field="*{percentualCofins}"
+                                       class="form-control calc-input tributo-pct" placeholder="3,00"
+                                       id="pctCofins"/>
+                                <span class="input-addon">%</span>
+                            </div>
+                            <small>Valor: R$ <span id="vlrCofins">0,00</span></small>
+                        </div>
+                        <div class="tributo-item">
+                            <label>V.5 – ISS (%)</label>
+                            <div class="input-group">
+                                <input type="number" step="0.01" th:field="*{percentualIss}"
+                                       class="form-control calc-input tributo-pct" placeholder="5,00"
+                                       id="pctIss"/>
+                                <span class="input-addon">%</span>
+                            </div>
+                            <small>Valor: R$ <span id="vlrIss">0,00</span></small>
+                        </div>
+                        <div class="tributo-item tributo-total">
+                            <label><strong>Total Tributos</strong></label>
+                            <input type="text" id="subtotalV" class="form-control result-field" readonly/>
+                            <small>% Total: <span id="pctTotalTributos">0,00</span>%</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PREÇO FINAL -->
+            <div class="card form-section preco-final-card">
+                <div class="card-body preco-final-body">
+                    <div class="preco-final-label">
+                        <i class="fas fa-star"></i>
+                        VI – PREÇO MENSAL POR UNIDADE DE SERVIÇO
+                    </div>
+                    <div class="preco-final-value" id="precoMensal">R$ 0,00</div>
+                </div>
+            </div>
+
+            <!-- Botões -->
+            <div class="form-actions">
+                <a th:href="@{/dashboard}" class="btn btn-secondary">
+                    <i class="fas fa-times"></i> Cancelar
+                </a>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i>
+                    <span th:text="${modo == 'novo' ? 'Salvar Registro' : 'Atualizar Registro'}"></span>
+                </button>
+            </div>
+
+        </form>
+    </main>
+</div>
+
+<script th:src="@{/js/calc.js}"></script>
+</body>
+</html>

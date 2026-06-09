@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Dashboard – Custo de Serviço</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<div class="layout">
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <i class="fas fa-calculator"></i>
+            <span>CustoServico</span>
+        </div>
+        <nav class="sidebar-nav">
+            <a th:href="@{/dashboard}" class="nav-item active">
+                <i class="fas fa-home"></i> Dashboard
+            </a>
+            <a th:href="@{/custos/novo}" class="nav-item">
+                <i class="fas fa-plus-circle"></i> Novo Custo
+            </a>
+            <a th:href="@{/admin/usuarios}" sec:authorize="hasRole('SUPER_ADMIN')" class="nav-item">
+                <i class="fas fa-users-cog"></i> Usuários
+            </a>
+            <a th:href="@{/logout}" class="nav-item nav-item-logout"
+               onclick="return confirm('Deseja sair?')">
+                <i class="fas fa-sign-out-alt"></i> Sair
+            </a>
+        </nav>
+        <div class="sidebar-footer">
+            <i class="fas fa-user-circle"></i>
+            <span th:text="${nomeUsuario}"></span>
+            <span class="badge-role" th:if="${isAdmin}">ADMIN</span>
+        </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="main-content">
+        <div class="page-header">
+            <h2><i class="fas fa-tachometer-alt"></i> Dashboard</h2>
+        </div>
+
+        <!-- Flash Messages -->
+        <div class="alert alert-success" th:if="${sucesso}" th:text="${sucesso}"></div>
+        <div class="alert alert-danger" th:if="${erro}" th:text="${erro}"></div>
+
+        <!-- Cards de Resumo -->
+        <div class="cards-grid">
+            <div class="stat-card stat-card-blue">
+                <div class="stat-icon"><i class="fas fa-file-invoice-dollar"></i></div>
+                <div class="stat-info">
+                    <span class="stat-value" th:text="${totalRegistros}">0</span>
+                    <span class="stat-label">Registros de Custo</span>
+                </div>
+            </div>
+            <div class="stat-card stat-card-green" th:if="${isAdmin}">
+                <div class="stat-icon"><i class="fas fa-users"></i></div>
+                <div class="stat-info">
+                    <span class="stat-value" th:text="${totalUsuarios}">0</span>
+                    <span class="stat-label">Usuários Cadastrados</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabela de Custos -->
+        <div class="card">
+            <div class="card-header">
+                <h3><i class="fas fa-list"></i> Custos Mensais de Serviço</h3>
+                <a th:href="@{/custos/novo}" class="btn btn-primary btn-sm">
+                    <i class="fas fa-plus"></i> Novo
+                </a>
+            </div>
+            <div class="card-body table-responsive">
+                <table class="data-table" th:if="${!custos.isEmpty()}">
+                    <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Descrição</th>
+                        <th>Remuneração</th>
+                        <th>Encargos (II)</th>
+                        <th>Insumos (III)</th>
+                        <th>Tributos (V)</th>
+                        <th class="col-destaque">Preço Mensal</th>
+                        <th>Ações</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="c : ${custos}">
+                        <td th:text="${c.id}"></td>
+                        <td><strong th:text="${c.descricao}"></strong></td>
+                        <td th:text="${#numbers.formatDecimal(c.subtotalI, 1, 'POINT', 2, 'COMMA')}"></td>
+                        <td th:text="${#numbers.formatDecimal(c.subtotalII, 1, 'POINT', 2, 'COMMA')}"></td>
+                        <td th:text="${#numbers.formatDecimal(c.subtotalIII, 1, 'POINT', 2, 'COMMA')}"></td>
+                        <td th:text="${#numbers.formatDecimal(c.subtotalV, 1, 'POINT', 2, 'COMMA')}"></td>
+                        <td class="col-destaque preco-mensal"
+                            th:text="'R$ ' + ${#numbers.formatDecimal(c.precoMensal, 1, 'POINT', 2, 'COMMA')}">
+                        </td>
+                        <td class="actions">
+                            <a th:href="@{/custos/visualizar/{id}(id=${c.id})}"
+                               class="btn btn-info btn-xs" title="Visualizar">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                            <a th:href="@{/custos/editar/{id}(id=${c.id})}"
+                               class="btn btn-warning btn-xs" title="Editar">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            <form th:if="${isAdmin}"
+                                  th:action="@{/custos/excluir/{id}(id=${c.id})}"
+                                  method="post" style="display:inline"
+                                  onsubmit="return confirm('Excluir este registro?')">
+                                <input type="hidden" name="_csrf" th:value="${_csrf.token}"/>
+                                <button type="submit" class="btn btn-danger btn-xs" title="Excluir">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+                <div class="empty-state" th:if="${custos.isEmpty()}">
+                    <i class="fas fa-inbox"></i>
+                    <p>Nenhum registro encontrado. <a th:href="@{/custos/novo}">Criar o primeiro</a></p>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+</body>
+</html>
