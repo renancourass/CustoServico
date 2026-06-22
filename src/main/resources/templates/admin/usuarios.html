@@ -11,8 +11,7 @@
 <div class="layout">
     <aside class="sidebar">
         <div class="sidebar-header">
-            <i class="fas fa-calculator"></i>
-            <span>CustoServico</span>
+            <img src="https://atitudegrupo.com.br/wp-content/uploads/2026/05/LogoAtitude-.png" alt="Atitude Serviço" class="sidebar-logo" />
         </div>
         <nav class="sidebar-nav">
             <a th:href="@{/dashboard}" class="nav-item">
@@ -23,6 +22,12 @@
             </a>
             <a th:href="@{/admin/usuarios}" class="nav-item active">
                 <i class="fas fa-users-cog"></i> Usuários
+            </a>
+            <a th:href="@{/unidade-servico}" class="nav-item">
+                <i class="fas fa-id-badge"></i> Unidade de Serviço
+            </a>
+            <a th:href="@{/fardamento-estoque}" class="nav-item">
+                <i class="fas fa-tshirt"></i> Fardamento
             </a>
             <a th:href="@{/logout}" class="nav-item nav-item-logout"
                onclick="return confirm('Deseja sair?')">

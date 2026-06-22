@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Relatório de Estoque — Fardamento</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+    <style>
+        /* ── Badges de função ── */
+        .func-badge-porteiro { background:#dbeafe; color:#1d4ed8; padding:3px 12px; border-radius:20px; font-size:12px; font-weight:600; }
+        .func-badge-asg      { background:#dcfce7; color:#166534; padding:3px 12px; border-radius:20px; font-size:12px; font-weight:600; }
+
+        /* ── Cards de resumo ── */
+        .summary-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:16px; margin-bottom:24px; }
+        .summary-card { background:#fff; border-radius:12px; padding:20px 24px; box-shadow:0 2px 8px rgba(0,0,0,.06); border:1px solid var(--border); }
+        .summary-card .sc-label { font-size:12px; font-weight:600; color:var(--text-secondary); text-transform:uppercase; letter-spacing:.05em; margin-bottom:6px; }
+        .summary-card .sc-value { font-size:28px; font-weight:800; color:var(--text-primary); line-height:1; }
+        .summary-card .sc-sub   { font-size:12px; color:var(--text-secondary); margin-top:4px; }
+        .sc-porteiro .sc-value  { color:#1d4ed8; }
+        .sc-asg      .sc-value  { color:#166534; }
+
+        /* ── Tabela de relatório ── */
+        .rel-section { margin-bottom:28px; }
+        .rel-section-title {
+            display:flex; align-items:center; gap:10px;
+            font-size:15px; font-weight:700; color:var(--text-primary);
+            margin-bottom:10px; padding-bottom:8px;
+            border-bottom:2px solid var(--border);
+        }
+        .rel-table { width:100%; border-collapse:collapse; font-size:13px; }
+        .rel-table th {
+            padding:10px 14px; text-align:left; font-weight:600;
+            font-size:11px; color:var(--text-secondary); text-transform:uppercase;
+            letter-spacing:.05em; background:#f8fafc; border-bottom:2px solid var(--border);
+        }
+        .rel-table td { padding:10px 14px; border-bottom:1px solid #f1f5f9; vertical-align:middle; }
+        .rel-table tbody tr:hover { background:#f8fafc; }
+        .rel-table tfoot td { font-weight:700; background:#f1f5f9; border-top:2px solid var(--border); }
+
+        /* tamanhos inline */
+        .tamanhos-pills { display:flex; flex-wrap:wrap; gap:5px; }
+        .tamanho-pill {
+            display:inline-flex; flex-direction:column; align-items:center;
+            background:#f1f5f9; border:1px solid #e2e8f0; border-radius:6px;
+            padding:3px 8px; min-width:42px; font-size:11px;
+        }
+        .tamanho-pill .tp-label { font-weight:700; color:var(--text-secondary); }
+        .tamanho-pill .tp-qty   { font-weight:800; color:var(--text-primary); font-size:13px; }
+        .tamanho-pill.zero .tp-qty { color:var(--danger); }
+
+        /* semáforo de estoque */
+        .estoque-ok   { color:var(--success); font-weight:700; }
+        .estoque-low  { color:var(--warning); font-weight:700; }
+        .estoque-zero { color:var(--danger);  font-weight:700; }
+
+        /* ── Barra de ações ── */
+        .report-toolbar {
+            display:flex; align-items:center; justify-content:space-between;
+            margin-bottom:20px; flex-wrap:wrap; gap:10px;
+        }
+        .report-meta { font-size:13px; color:var(--text-secondary); }
+        .report-meta strong { color:var(--text-primary); }
+
+        /* ── Print ── */
+        @media print {
+            .sidebar, .report-toolbar .no-print { display:none !important; }
+            .main-content { margin-left:0 !important; }
+            .rel-table tbody tr:hover { background:transparent; }
+            .summary-card { box-shadow:none; border:1px solid #ccc; }
+        }
+    </style>
+</head>
+<body>
+<div class="layout">
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <img src="https://atitudegrupo.com.br/wp-content/uploads/2026/05/LogoAtitude-.png" alt="Atitude Serviço" class="sidebar-logo" />
+        </div>
+        <nav class="sidebar-nav">
+            <a th:href="@{/dashboard}" class="nav-item">
+                <i class="fas fa-home"></i> Dashboard
+            </a>
+            <a th:href="@{/custos/novo}" class="nav-item">
+                <i class="fas fa-plus-circle"></i> Novo Custo
+            </a>
+            <a th:href="@{/admin/usuarios}" sec:authorize="hasRole('SUPER_ADMIN')" class="nav-item">
+                <i class="fas fa-users-cog"></i> Usuários
+            </a>
+            <a th:href="@{/unidade-servico}" class="nav-item">
+                <i class="fas fa-id-badge"></i> Unidade de Serviço
+            </a>
+            <a th:href="@{/fardamento-estoque}" class="nav-item">
+                <i class="fas fa-tshirt"></i> Fardamento
+            </a>
+            <a th:href="@{/fardamento-relatorio}" class="nav-item active">
+                <i class="fas fa-file-alt"></i> Relatório
+            </a>
+            <a th:href="@{/logout}" class="nav-item nav-item-logout"
+               onclick="return confirm('Deseja sair?')">
+                <i class="fas fa-sign-out-alt"></i> Sair
+            </a>
+        </nav>
+        <div class="sidebar-footer">
+            <i class="fas fa-user-circle"></i>
+            <span th:text="${nomeUsuario}"></span>
+            <span class="badge-role" th:if="${isAdmin}">ADMIN</span>
+        </div>
+    </aside>
+
+    <!-- MAIN -->
+    <main class="main-content">
+        <div class="page-header">
+            <h2><i class="fas fa-file-alt"></i> Relatório de Estoque — Fardamento</h2>
+        </div>
+
+        <!-- Toolbar -->
+        <div class="report-toolbar">
+            <p class="report-meta">
+                Gerado em: <strong id="dataGeracao">—</strong>
+            </p>
+            <div class="no-print" style="display:flex;gap:8px">
+                <a th:href="@{/fardamento-estoque}" class="btn btn-secondary btn-sm">
+                    <i class="fas fa-arrow-left"></i> Voltar ao Estoque
+                </a>
+                <button class="btn btn-primary btn-sm" onclick="window.print()">
+                    <i class="fas fa-print"></i> Imprimir / PDF
+                </button>
+            </div>
+        </div>
+
+        <!-- Cards de resumo -->
+        <div class="summary-grid" id="summaryGrid">
+            <div class="summary-card">
+                <div class="sc-label">Total de Itens</div>
+                <div class="sc-value" id="totalItens">—</div>
+                <div class="sc-sub">cadastrados no estoque</div>
+            </div>
+            <div class="summary-card">
+                <div class="sc-label">Total em Estoque</div>
+                <div class="sc-value" id="totalPecas">—</div>
+                <div class="sc-sub">peças / pares / kits</div>
+            </div>
+            <div class="summary-card sc-porteiro">
+                <div class="sc-label"><span class="func-badge-porteiro">Porteiro</span></div>
+                <div class="sc-value" id="totalPorteiro">—</div>
+                <div class="sc-sub" id="subPorteiro">itens</div>
+            </div>
+            <div class="summary-card sc-asg">
+                <div class="sc-label"><span class="func-badge-asg">ASG (Zelador)</span></div>
+                <div class="sc-value" id="totalAsg">—</div>
+                <div class="sc-sub" id="subAsg">itens</div>
+            </div>
+        </div>
+
+        <div id="alertBox" class="alert alert-danger" style="display:none">
+            Erro ao carregar os dados do estoque. Tente recarregar a página.
+        </div>
+
+        <!-- Seção Porteiro -->
+        <div class="card rel-section" id="secPorteiro" style="display:none">
+            <div class="card-body" style="padding:24px">
+                <div class="rel-section-title">
+                    <span class="func-badge-porteiro">Porteiro</span>
+                    <span id="resumoPorteiro" style="font-size:13px;color:var(--text-secondary);font-weight:400"></span>
+                </div>
+                <div class="table-responsive">
+                    <table class="rel-table">
+                        <thead>
+                            <tr>
+                                <th style="width:220px">Item</th>
+                                <th style="width:80px">Unidade</th>
+                                <th>Estoque por Tamanho</th>
+                                <th style="width:100px;text-align:right">Total</th>
+                                <th style="width:100px">Situação</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbPorteiro"></tbody>
+                        <tfoot>
+                            <tr>
+                                <td colspan="3">Total Porteiro</td>
+                                <td style="text-align:right" id="footPorteiro">0</td>
+                                <td></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Seção ASG -->
+        <div class="card rel-section" id="secAsg" style="display:none">
+            <div class="card-body" style="padding:24px">
+                <div class="rel-section-title">
+                    <span class="func-badge-asg">ASG (Zelador)</span>
+                    <span id="resumoAsg" style="font-size:13px;color:var(--text-secondary);font-weight:400"></span>
+                </div>
+                <div class="table-responsive">
+                    <table class="rel-table">
+                        <thead>
+                            <tr>
+                                <th style="width:220px">Item</th>
+                                <th style="width:80px">Unidade</th>
+                                <th>Estoque por Tamanho</th>
+                                <th style="width:100px;text-align:right">Total</th>
+                                <th style="width:100px">Situação</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbAsg"></tbody>
+                        <tfoot>
+                            <tr>
+                                <td colspan="3">Total ASG</td>
+                                <td style="text-align:right" id="footAsg">0</td>
+                                <td></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Itens zerados -->
+        <div class="card" id="secZerados" style="display:none">
+            <div class="card-header" style="background:#fff5f5;border-color:#fecaca">
+                <h3 style="color:#dc2626"><i class="fas fa-exclamation-triangle"></i> Itens com Estoque Zerado</h3>
+            </div>
+            <div class="card-body" id="listaZerados" style="padding:16px 24px;font-size:13px;color:var(--text-secondary)"></div>
+        </div>
+    </main>
+</div>
+
+<script>
+const API = '/api/fardamento';
+
+function situacao(qtd) {
+    if (qtd === 0) return '<span class="estoque-zero"><i class="fas fa-times-circle"></i> Zerado</span>';
+    if (qtd <= 3) return '<span class="estoque-low"><i class="fas fa-exclamation-circle"></i> Baixo</span>';
+    return '<span class="estoque-ok"><i class="fas fa-check-circle"></i> OK</span>';
+}
+
+function renderTamanhos(tamanhos) {
+    if (!tamanhos || tamanhos.length === 0) return '—';
+    return '<div class="tamanhos-pills">' +
+        tamanhos.map(t =>
+            `<div class="tamanho-pill ${t.quantidade === 0 ? 'zero' : ''}">
+                <span class="tp-label">${t.tamanho}</span>
+                <span class="tp-qty">${t.quantidade}</span>
+            </div>`
+        ).join('') +
+    '</div>';
+}
+
+function renderTabela(lista, tamanhosPorItem, tbodyId, resumoId, footId, sectionId) {
+    const section = document.getElementById(sectionId);
+    if (lista.length === 0) { section.style.display = 'none'; return 0; }
+    section.style.display = '';
+
+    const totalQtd = lista.reduce((s, i) => s + (i.quantidade || 0), 0);
+    document.getElementById(resumoId).textContent =
+        lista.length + ' item(s) — ' + totalQtd + ' peça(s) em estoque';
+    document.getElementById(footId).textContent = totalQtd;
+
+    document.getElementById(tbodyId).innerHTML = lista.map(item => {
+        const tamanhos = tamanhosPorItem[item.id] || [];
+        const estoqueCell = item.tipoTamanho && item.tipoTamanho !== 'NENHUM'
+            ? renderTamanhos(tamanhos)
+            : `<strong style="font-size:15px">${item.quantidade}</strong>`;
+        return `<tr>
+            <td><strong>${item.nome}</strong></td>
+            <td>${item.unidade}</td>
+            <td>${estoqueCell}</td>
+            <td style="text-align:right;font-weight:700;font-size:14px">${item.quantidade}</td>
+            <td>${situacao(item.quantidade)}</td>
+        </tr>`;
+    }).join('');
+
+    return totalQtd;
+}
+
+async function gerarRelatorio() {
+    try {
+        const res = await fetch(API);
+        if (!res.ok) throw new Error();
+        const itens = await res.json();
+
+        const comTamanho = itens.filter(i => i.tipoTamanho && i.tipoTamanho !== 'NENHUM');
+        const tamanhosPorItem = {};
+        await Promise.all(comTamanho.map(async item => {
+            const r = await fetch(API + '/' + item.id + '/tamanhos');
+            tamanhosPorItem[item.id] = await r.json();
+        }));
+
+        const porteiros = itens.filter(i => i.funcao === 'PORTEIRO');
+        const asgs      = itens.filter(i => i.funcao === 'ASG');
+
+        const totPort = renderTabela(porteiros, tamanhosPorItem, 'tbPorteiro', 'resumoPorteiro', 'footPorteiro', 'secPorteiro');
+        const totAsg  = renderTabela(asgs,      tamanhosPorItem, 'tbAsg',      'resumoAsg',      'footAsg',      'secAsg');
+
+        document.getElementById('totalItens').textContent    = itens.length;
+        document.getElementById('totalPecas').textContent    = totPort + totAsg;
+        document.getElementById('totalPorteiro').textContent = totPort;
+        document.getElementById('subPorteiro').textContent   = porteiros.length + ' item(s)';
+        document.getElementById('totalAsg').textContent      = totAsg;
+        document.getElementById('subAsg').textContent        = asgs.length + ' item(s)';
+
+        // Itens zerados
+        const zerados = itens.filter(i => (i.quantidade || 0) === 0);
+        const secZ = document.getElementById('secZerados');
+        if (zerados.length > 0) {
+            secZ.style.display = '';
+            document.getElementById('listaZerados').innerHTML =
+                '<ul style="margin:0;padding-left:20px">' +
+                zerados.map(z => `<li><strong>${z.nome}</strong> (${z.funcao === 'PORTEIRO' ? 'Porteiro' : 'ASG'})</li>`).join('') +
+                '</ul>';
+        } else {
+            secZ.style.display = 'none';
+        }
+
+    } catch (e) {
+        document.getElementById('alertBox').style.display = 'flex';
+    }
+}
+
+// Data de geração
+const agora = new Date();
+document.getElementById('dataGeracao').textContent =
+    agora.toLocaleDateString('pt-BR') + ' às ' + agora.toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
+
+gerarRelatorio();
+</script>
+</body>
+</html>

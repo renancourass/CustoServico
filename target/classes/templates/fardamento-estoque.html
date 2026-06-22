@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Estoque de Fardamento – Custo de Serviço</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+    <style>
+        .func-badge-porteiro { background: #dbeafe; color: #1d4ed8; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+        .func-badge-asg { background: #dcfce7; color: #166534; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+        .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:200; align-items:center; justify-content:center; }
+        .modal-overlay.open { display:flex; }
+        .modal-box { background:#fff; border-radius:14px; padding:28px 32px; width:100%; max-width:480px; box-shadow:0 20px 40px rgba(0,0,0,.2); }
+        .modal-box h3 { font-size:17px; font-weight:700; margin-bottom:18px; display:flex; align-items:center; gap:8px; }
+        .modal-box h3 i { color: var(--primary); }
+        .modal-actions { display:flex; gap:10px; justify-content:flex-end; margin-top:20px; }
+        .inline-edit-input { width: 140px; padding: 4px 8px; border: 1px solid var(--primary); border-radius: 6px; font-size: 13px; }
+        .edit-save-btn, .edit-cancel-btn { padding: 4px 8px; border-radius: 6px; border: none; cursor: pointer; font-size: 12px; }
+        .edit-save-btn { background: var(--success); color: #fff; }
+        .edit-cancel-btn { background: #f1f5f9; color: var(--text-primary); border: 1px solid var(--border); }
+
+        /* Grade de tamanhos */
+        .tamanhos-grid { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+        .tamanho-cell { display: flex; flex-direction: column; align-items: center; gap: 2px;
+            background: #f8fafc; border: 1px solid var(--border); border-radius: 8px; padding: 5px 7px; min-width: 54px; }
+        .tamanho-label { font-size: 11px; font-weight: 700; color: var(--text-secondary); }
+        .tamanho-qty-row { display: flex; align-items: center; gap: 4px; }
+        .tqty-btn { width: 22px; height: 22px; border-radius: 4px; border: 1px solid var(--border);
+            background: #fff; cursor: pointer; font-size: 11px; display: flex; align-items: center; justify-content: center; }
+        .tqty-btn:hover { background: var(--primary); color: #fff; border-color: var(--primary); }
+        .tqty-btn.red:hover { background: var(--danger); border-color: var(--danger); }
+        .tqty-val { font-size: 13px; font-weight: 700; min-width: 20px; text-align: center; }
+        .tqty-zero { color: var(--danger); }
+
+        /* Controle simples (sem tamanho) */
+        .qty-controls { display: flex; align-items: center; gap: 8px; }
+        .qty-btn { width: 26px; height: 26px; border-radius: 6px; border: 1px solid var(--border); background: #f8fafc;
+            cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 13px; }
+        .qty-btn:hover { background: var(--primary); color: #fff; border-color: var(--primary); }
+        .qty-btn.red:hover { background: var(--danger); border-color: var(--danger); }
+        .qty-btn:disabled { opacity: .4; cursor: default; }
+        .qty-value { font-size: 15px; font-weight: 700; min-width: 28px; text-align: center; }
+        .qty-zero { color: var(--danger); }
+    </style>
+</head>
+<body>
+
+<div class="layout">
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <img src="https://atitudegrupo.com.br/wp-content/uploads/2026/05/LogoAtitude-.png" alt="Atitude Serviço" class="sidebar-logo" />
+        </div>
+        <nav class="sidebar-nav">
+            <a th:href="@{/dashboard}" class="nav-item">
+                <i class="fas fa-home"></i> Dashboard
+            </a>
+            <a th:href="@{/custos/novo}" class="nav-item">
+                <i class="fas fa-plus-circle"></i> Novo Custo
+            </a>
+            <a th:href="@{/admin/usuarios}" sec:authorize="hasRole('SUPER_ADMIN')" class="nav-item">
+                <i class="fas fa-users-cog"></i> Usuários
+            </a>
+            <a th:href="@{/unidade-servico}" class="nav-item">
+                <i class="fas fa-id-badge"></i> Unidade de Serviço
+            </a>
+            <a th:href="@{/fardamento-estoque}" class="nav-item active">
+                <i class="fas fa-tshirt"></i> Fardamento
+            </a>
+            <a th:href="@{/logout}" class="nav-item nav-item-logout"
+               onclick="return confirm('Deseja sair?')">
+                <i class="fas fa-sign-out-alt"></i> Sair
+            </a>
+        </nav>
+        <div class="sidebar-footer">
+            <i class="fas fa-user-circle"></i>
+            <span th:text="${nomeUsuario}"></span>
+            <span class="badge-role" th:if="${isAdmin}">ADMIN</span>
+        </div>
+    </aside>
+
+    <!-- MAIN -->
+    <main class="main-content">
+        <div class="page-header">
+            <h2><i class="fas fa-tshirt"></i> Controle de Estoque — Fardamento</h2>
+            <div class="header-actions">
+                <a th:href="@{/fardamento-relatorio}" class="btn btn-secondary btn-sm">
+                    <i class="fas fa-file-alt"></i> Relatório
+                </a>
+                <button class="btn btn-primary btn-sm" onclick="abrirModalNovo()">
+                    <i class="fas fa-plus"></i> Novo Item
+                </button>
+            </div>
+        </div>
+
+        <div id="alertBox" class="alert" style="display:none"></div>
+
+        <!-- Seção PORTEIRO -->
+        <div class="card" id="cardPorteiro">
+            <div class="card-header">
+                <h3><span class="func-badge-porteiro">Porteiro</span></h3>
+                <span id="resumoPorteiro" style="font-size:13px;color:var(--text-secondary)"></span>
+            </div>
+            <div class="card-body table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th style="width:200px">Item</th>
+                            <th>Unidade</th>
+                            <th>Estoque / Tamanhos</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbodyPorteiro">
+                        <tr><td colspan="4" style="text-align:center;padding:30px;color:var(--text-secondary)">Carregando...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Seção ASG -->
+        <div class="card" id="cardAsg">
+            <div class="card-header">
+                <h3><span class="func-badge-asg">ASG (Zelador)</span></h3>
+                <span id="resumoAsg" style="font-size:13px;color:var(--text-secondary)"></span>
+            </div>
+            <div class="card-body table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th style="width:200px">Item</th>
+                            <th>Unidade</th>
+                            <th>Estoque / Tamanhos</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbodyAsg">
+                        <tr><td colspan="4" style="text-align:center;padding:30px;color:var(--text-secondary)">Carregando...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+</div>
+
+<!-- MODAL NOVO ITEM -->
+<div class="modal-overlay" id="modalNovoItem">
+    <div class="modal-box">
+        <h3><i class="fas fa-plus-circle"></i> Novo Item de Fardamento</h3>
+
+        <div class="form-row">
+            <div class="form-col">
+                <label>Nome do Item *</label>
+                <input type="text" id="iNome" class="form-control" placeholder="Ex: Camisa Social Manga Longa"/>
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-col">
+                <label>Função *</label>
+                <select id="iFuncao" class="form-control">
+                    <option value="">Selecione</option>
+                    <option value="PORTEIRO">Porteiro</option>
+                    <option value="ASG">ASG (Zelador)</option>
+                </select>
+            </div>
+            <div class="form-col">
+                <label>Unidade</label>
+                <select id="iUnidade" class="form-control">
+                    <option value="peça">Peça</option>
+                    <option value="par">Par</option>
+                    <option value="kit">Kit</option>
+                </select>
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-col">
+                <label>Tipo de Tamanho</label>
+                <select id="iTipoTamanho" class="form-control" onchange="alternarQtdInicial()">
+                    <option value="NENHUM">Sem tamanho</option>
+                    <option value="VESTUARIO">Vestuário (P / M / G / GG)</option>
+                    <option value="CALCADO">Calçado (35 a 45)</option>
+                </select>
+            </div>
+            <div class="form-col" id="qtdInicialCol" style="max-width:140px">
+                <label>Qtd. Inicial</label>
+                <input type="number" id="iQuantidade" class="form-control" value="0" min="0"/>
+            </div>
+        </div>
+        <div id="infoTamanho" style="display:none;font-size:12px;color:var(--text-secondary);margin-top:4px">
+            <i class="fas fa-info-circle"></i> As grades de tamanho serão criadas com estoque 0. Ajuste no estoque após salvar.
+        </div>
+
+        <div class="modal-actions">
+            <button class="btn btn-secondary" onclick="fecharModalNovo()">Cancelar</button>
+            <button class="btn btn-primary" onclick="salvarNovoItem()">
+                <i class="fas fa-save"></i> Adicionar
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+const API = '/api';
+let todosItens = [];
+let tamanhosPorItem = {};
+
+function showAlert(tipo, msg) {
+    const box = document.getElementById('alertBox');
+    box.className = 'alert ' + (tipo === 'success' ? 'alert-success' : 'alert-danger');
+    box.textContent = msg;
+    box.style.display = 'flex';
+    setTimeout(() => box.style.display = 'none', 4000);
+}
+
+// ── Carregar todos os itens + tamanhos ──────────────────────────────────────
+async function carregarItens() {
+    const res = await fetch(API + '/fardamento');
+    todosItens = await res.json();
+
+    // Busca tamanhos de todos os itens com tipo != NENHUM
+    const comTamanho = todosItens.filter(i => i.tipoTamanho && i.tipoTamanho !== 'NENHUM');
+    await Promise.all(comTamanho.map(async item => {
+        const r = await fetch(API + '/fardamento/' + item.id + '/tamanhos');
+        tamanhosPorItem[item.id] = await r.json();
+    }));
+
+    renderizarFuncao('PORTEIRO', 'tbodyPorteiro', 'resumoPorteiro');
+    renderizarFuncao('ASG', 'tbodyAsg', 'resumoAsg');
+}
+
+function renderizarFuncao(funcao, tbodyId, resumoId) {
+    const lista = todosItens.filter(i => i.funcao === funcao);
+    const tbody = document.getElementById(tbodyId);
+    const totalQtd = lista.reduce((s, i) => s + (i.quantidade || 0), 0);
+    document.getElementById(resumoId).textContent =
+        lista.length + ' item(s) — ' + totalQtd + ' peça(s) em estoque';
+
+    if (lista.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:30px;color:var(--text-secondary)">Nenhum item cadastrado.</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = lista.map(item => `
+        <tr id="row-${item.id}">
+            <td id="nome-cell-${item.id}"><strong>${item.nome}</strong></td>
+            <td id="unidade-cell-${item.id}">${item.unidade}</td>
+            <td>${renderizarEstoque(item)}</td>
+            <td class="actions">
+                <button class="btn btn-warning btn-xs" onclick="editarItem(${item.id})" title="Editar">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button class="btn btn-danger btn-xs" onclick="removerItem(${item.id})" title="Remover">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </td>
+        </tr>`).join('');
+}
+
+function renderizarEstoque(item) {
+    const tipo = item.tipoTamanho || 'NENHUM';
+    if (tipo === 'NENHUM') {
+        return `<div class="qty-controls">
+            <button class="qty-btn red" onclick="ajustarQtd(${item.id}, -1)" ${item.quantidade === 0 ? 'disabled' : ''}>
+                <i class="fas fa-minus"></i>
+            </button>
+            <span class="qty-value ${item.quantidade === 0 ? 'qty-zero' : ''}" id="qty-${item.id}">${item.quantidade}</span>
+            <button class="qty-btn" onclick="ajustarQtd(${item.id}, 1)">
+                <i class="fas fa-plus"></i>
+            </button>
+        </div>`;
+    }
+
+    const tamanhos = tamanhosPorItem[item.id] || [];
+    if (tamanhos.length === 0) {
+        return '<span style="color:var(--text-secondary);font-size:12px">Carregando tamanhos...</span>';
+    }
+
+    const celulas = tamanhos.map(t => `
+        <div class="tamanho-cell">
+            <span class="tamanho-label">${t.tamanho}</span>
+            <div class="tamanho-qty-row">
+                <button class="tqty-btn red" onclick="ajustarTamanho(${t.id}, -1, ${item.id})" ${t.quantidade === 0 ? 'disabled' : ''}>
+                    <i class="fas fa-minus"></i>
+                </button>
+                <span class="tqty-val ${t.quantidade === 0 ? 'tqty-zero' : ''}" id="tqty-${t.id}">${t.quantidade}</span>
+                <button class="tqty-btn" onclick="ajustarTamanho(${t.id}, 1, ${item.id})">
+                    <i class="fas fa-plus"></i>
+                </button>
+            </div>
+        </div>`).join('');
+
+    return `<div>
+        <div class="tamanhos-grid">${celulas}</div>
+        <div style="font-size:11px;color:var(--text-secondary);margin-top:4px">Total: <strong>${item.quantidade}</strong></div>
+    </div>`;
+}
+
+// ── Ajustar quantidade (sem tamanho) ────────────────────────────────────────
+async function ajustarQtd(id, delta) {
+    const item = todosItens.find(i => i.id === id);
+    const novaQtd = Math.max(0, (item.quantidade || 0) + delta);
+    await fetch(API + '/fardamento/' + id + '/quantidade', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ quantidade: novaQtd })
+    });
+    carregarItens();
+}
+
+// ── Ajustar tamanho específico ───────────────────────────────────────────────
+async function ajustarTamanho(tamanhoId, delta, itemId) {
+    const res = await fetch(API + '/fardamento/tamanhos/' + tamanhoId + '/quantidade', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ delta })
+    });
+    if (res.ok) {
+        carregarItens();
+    } else {
+        showAlert('danger', 'Erro ao ajustar tamanho.');
+    }
+}
+
+// ── Editar item (inline) ────────────────────────────────────────────────────
+function editarItem(id) {
+    const item = todosItens.find(i => i.id === id);
+    const nomeCell = document.getElementById('nome-cell-' + id);
+    const unidadeCell = document.getElementById('unidade-cell-' + id);
+
+    nomeCell.innerHTML = `<input type="text" class="inline-edit-input" id="edit-nome-${id}" value="${item.nome}"/>`;
+    unidadeCell.innerHTML = `
+        <select class="form-control" id="edit-unidade-${id}" style="width:90px;padding:4px 6px;font-size:12px">
+            <option value="peça" ${item.unidade==='peça'?'selected':''}>Peça</option>
+            <option value="par" ${item.unidade==='par'?'selected':''}>Par</option>
+            <option value="kit" ${item.unidade==='kit'?'selected':''}>Kit</option>
+        </select>`;
+
+    const acoes = document.querySelector('#row-' + id + ' td:last-child');
+    acoes.innerHTML = `
+        <button class="edit-save-btn" onclick="salvarEdicao(${id})"><i class="fas fa-check"></i> Salvar</button>
+        <button class="edit-cancel-btn" onclick="carregarItens()" style="margin-left:4px"><i class="fas fa-times"></i></button>`;
+}
+
+async function salvarEdicao(id) {
+    const item = todosItens.find(i => i.id === id);
+    const nome = document.getElementById('edit-nome-' + id).value.trim();
+    const unidade = document.getElementById('edit-unidade-' + id).value;
+    if (!nome) { showAlert('danger', 'O nome não pode ser vazio.'); return; }
+
+    await fetch(API + '/fardamento/' + id, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...item, nome, unidade })
+    });
+    showAlert('success', 'Item atualizado.');
+    carregarItens();
+}
+
+// ── Remover item ────────────────────────────────────────────────────────────
+async function removerItem(id) {
+    if (!confirm('Remover este item do estoque?')) return;
+    await fetch(API + '/fardamento/' + id, { method: 'DELETE' });
+    showAlert('success', 'Item removido.');
+    carregarItens();
+}
+
+// ── Modal Novo Item ─────────────────────────────────────────────────────────
+function alternarQtdInicial() {
+    const tipo = document.getElementById('iTipoTamanho').value;
+    const qtdCol = document.getElementById('qtdInicialCol');
+    const info = document.getElementById('infoTamanho');
+    if (tipo === 'NENHUM') {
+        qtdCol.style.display = '';
+        info.style.display = 'none';
+    } else {
+        qtdCol.style.display = 'none';
+        info.style.display = 'block';
+    }
+}
+
+function abrirModalNovo() {
+    document.getElementById('iNome').value = '';
+    document.getElementById('iFuncao').value = '';
+    document.getElementById('iUnidade').value = 'peça';
+    document.getElementById('iTipoTamanho').value = 'NENHUM';
+    document.getElementById('iQuantidade').value = '0';
+    document.getElementById('qtdInicialCol').style.display = '';
+    document.getElementById('infoTamanho').style.display = 'none';
+    document.getElementById('modalNovoItem').classList.add('open');
+}
+
+function fecharModalNovo() {
+    document.getElementById('modalNovoItem').classList.remove('open');
+}
+
+async function salvarNovoItem() {
+    const nome = document.getElementById('iNome').value.trim();
+    const funcao = document.getElementById('iFuncao').value;
+    const unidade = document.getElementById('iUnidade').value;
+    const tipoTamanho = document.getElementById('iTipoTamanho').value;
+    const quantidade = tipoTamanho === 'NENHUM'
+        ? (parseInt(document.getElementById('iQuantidade').value) || 0)
+        : 0;
+
+    if (!nome || !funcao) { showAlert('danger', 'Preencha o nome e a função.'); return; }
+
+    const res = await fetch(API + '/fardamento', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nome, funcao, unidade, quantidade, tipoTamanho, ativo: true })
+    });
+    if (res.ok) {
+        fecharModalNovo();
+        showAlert('success', 'Item adicionado ao estoque.');
+        carregarItens();
+    } else {
+        showAlert('danger', 'Erro ao adicionar item.');
+    }
+}
+
+document.getElementById('modalNovoItem').addEventListener('click', function(e) {
+    if (e.target === this) fecharModalNovo();
+});
+
+carregarItens();
+</script>
+</body>
+</html>
